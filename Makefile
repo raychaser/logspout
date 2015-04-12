@@ -10,6 +10,7 @@ dev:
 		-v $(PWD):/go/src/github.com/gliderlabs/logspout \
 		-p 8000:80 \
 		-e ROUTE_URIS=$(ROUTE) \
+		-e HTTP_PATH=$(HTTP_PATH) \
 		$(NAME):dev
 
 build:
