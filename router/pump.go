@@ -2,6 +2,7 @@ package router
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"io"
 	"log"
@@ -161,6 +162,48 @@ func (p *LogsPump) pumpLogs(event *docker.APIEvents, backlog bool) {
 		delete(p.pumps, id)
 		p.mu.Unlock()
 	}()
+
+	// Also pump the stats
+	p.stats(id, container, event)
+}
+
+func (p *LogsPump) stats(id string, container *docker.Container, event *docker.APIEvents) {
+	outrd, outwr := io.Pipe()
+	errrd, errwr := io.Pipe()
+	p.mu.Lock()
+	p.pumps[id] = newContainerPump(container, outrd, errrd)
+	p.mu.Unlock()
+	p.update(event)
+	debug("pump:", id, "stats: started")
+	go func() {
+
+		statsC := make(chan *docker.Stats)
+		errC := make(chan error, 1)
+		go func() {
+			errC <- p.client.Stats(id, statsC)
+			err := <-errC
+			if err != nil {
+				debug("pump: stats: error:", err)
+			}
+			close(errC)
+		}()
+
+		for {
+			stats, ok := <-statsC
+			if !ok {
+				break
+			}
+			enc := json.NewEncoder(outwr)
+			enc.Encode(stats)
+		}
+
+		outwr.Close()
+		errwr.Close()
+		p.mu.Lock()
+		delete(p.pumps, id)
+		p.mu.Unlock()
+	}()
+
 }
 
 func (p *LogsPump) update(event *docker.APIEvents) {
