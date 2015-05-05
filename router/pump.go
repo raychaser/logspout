@@ -163,8 +163,11 @@ func (p *LogsPump) pumpLogs(event *docker.APIEvents, backlog bool) {
 		p.mu.Unlock()
 	}()
 
-	// Also pump the stats
-	p.stats(id, container, event)
+	if os.Getenv("STATS") != "" {
+
+		// Also pump the stats
+		p.stats(id, container, event)		
+	}
 }
 
 func (p *LogsPump) stats(id string, container *docker.Container, event *docker.APIEvents) {
