@@ -180,7 +180,8 @@ func (p *LogsPump) stats(id string, container *docker.Container, event *docker.A
 		statsC := make(chan *docker.Stats)
 		errC := make(chan error, 1)
 		go func() {
-			errC <- p.client.Stats(id, statsC)
+			opts := docker.StatsOptions{id, statsC}
+			errC <- p.client.Stats(opts)
 			err := <-errC
 			if err != nil {
 				debug("pump: stats: error:", err)
